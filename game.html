@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>摸鱼大作战 ✈</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="page-body game-body">
+  <header class="page-header">
+    <div class="page-title"><span class="page-title-icon">✈</span>摸鱼大作战</div>
+    <a href="./" class="back-link">← 回首页</a>
+  </header>
+
+  <div class="game-container">
+    <div class="game-hud">
+      <span class="hud-hearts" id="hearts">♥♥♥</span>
+      <span>分数 <span class="hud-score" id="score">0</span></span>
+    </div>
+
+    <div class="game-canvas-wrapper" id="canvasWrapper">
+      <canvas id="gameCanvas" width="360" height="480"></canvas>
+      <div class="game-overlay" id="startOverlay">
+        <h2>摸鱼大作战</h2>
+        <p>
+          击落老板派来的 <strong>会议 / 周报 / DDL</strong><br>
+          移动鼠标 / 手指 控制飞机，自动开火<br>
+          被撞到掉一颗 ♥，没血就 GG
+        </p>
+        <button class="btn btn-primary" id="startBtn">开始摸鱼</button>
+      </div>
+      <div class="game-overlay hidden" id="endOverlay">
+        <p>今天摸到</p>
+        <div class="final-score" id="finalScore">0</div>
+        <p>明天继续摸~</p>
+        <button class="btn btn-primary" id="restartBtn">再来一局</button>
+      </div>
+    </div>
+
+    <p class="game-tip">提示：周末摸鱼伤害加倍（不是）</p>
+  </div>
+
+  <footer class="page-footer">made with ♥ by 董家才子</footer>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const startOverlay = document.getElementById('startOverlay');
+    const endOverlay = document.getElementById('endOverlay');
+
+    let player, bullets, enemies, particles;
+    let score, lives, gameRunning, animFrame, spawnTimer, difficulty;
+
+    const ENEMY_TYPES = [
+      { text: '会议', color: '#ff6b6b', w: 50, h: 32, speed: 1.5, hp: 1 },
+      { text: '周报', color: '#ffa726', w: 50, h: 32, speed: 1.2, hp: 2 },
+      { text: 'DDL', color: '#ef5350', w: 56, h: 34, speed: 2, hp: 1 },
+      { text: 'OKR', color: '#ab47bc', w: 48, h: 32, speed: 1.8, hp: 1 },
+      { text: '对齐', color: '#42a5f5', w: 48, h: 32, speed: 1.6, hp: 2 },
+    ];
+
+    function init() {
+      player = { x: W / 2, y: H - 50, w: 30, h: 30 };
+      bullets = [];
+      enemies = [];
+      particles = [];
+      score = 0;
+      lives = 3;
+      spawnTimer = 0;
+      difficulty = 1;
+      gameRunning = true;
+      updateHUD();
+    }
+
+    function updateHUD() {
+      document.getElementById('score').textContent = score;
+      document.getElementById('hearts').textContent = '♥'.repeat(Math.max(0, lives));
+    }
+
+    function spawnEnemy() {
+      const type = ENEMY_TYPES[Math.floor(Math.random() * ENEMY_TYPES.length)];
+      enemies.push({
+        x: Math.random() * (W - type.w - 20) + 10,
+        y: -type.h,
+        ...type,
+        speed: type.speed * (0.8 + difficulty * 0.2),
+      });
+    }
+
+    function shoot() {
+      bullets.push({ x: player.x, y: player.y - 18, w: 4, h: 12, speed: 6 });
+    }
+
+    function createParticles(x, y, color) {
+      for (let i = 0; i < 6; i++) {
+        particles.push({
+          x, y,
+          vx: (Math.random() - 0.5) * 4,
+          vy: (Math.random() - 0.5) * 4,
+          life: 30,
+          color,
+          size: Math.random() * 4 + 2,
+        });
+      }
+    }
+
+    let shootCooldown = 0;
+
+    function update() {
+      difficulty = 1 + score / 50;
+      spawnTimer++;
+      if (spawnTimer > Math.max(30, 60 - difficulty * 5)) {
+        spawnEnemy();
+        spawnTimer = 0;
+      }
+
+      shootCooldown--;
+      if (shootCooldown <= 0) {
+        shoot();
+        shootCooldown = 10;
+      }
+
+      bullets.forEach(b => b.y -= b.speed);
+      bullets = bullets.filter(b => b.y > -20);
+
+      enemies.forEach(e => e.y += e.speed);
+
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life--;
+      });
+      particles = particles.filter(p => p.life > 0);
+
+      for (let i = enemies.length - 1; i >= 0; i--) {
+        const e = enemies[i];
+        for (let j = bullets.length - 1; j >= 0; j--) {
+          const b = bullets[j];
+          if (b.x > e.x && b.x < e.x + e.w && b.y > e.y && b.y < e.y + e.h) {
+            bullets.splice(j, 1);
+            e.hp--;
+            if (e.hp <= 0) {
+              createParticles(e.x + e.w / 2, e.y + e.h / 2, e.color);
+              enemies.splice(i, 1);
+              score++;
+              updateHUD();
+            }
+            break;
+          }
+        }
+      }
+
+      for (let i = enemies.length - 1; i >= 0; i--) {
+        const e = enemies[i];
+        if (
+          player.x - 12 < e.x + e.w &&
+          player.x + 12 > e.x &&
+          player.y - 12 < e.y + e.h &&
+          player.y + 12 > e.y
+        ) {
+          enemies.splice(i, 1);
+          lives--;
+          createParticles(player.x, player.y, '#ff6b6b');
+          updateHUD();
+          if (lives <= 0) {
+            gameRunning = false;
+            document.getElementById('finalScore').textContent = score;
+            endOverlay.classList.remove('hidden');
+          }
+        }
+      }
+
+      enemies = enemies.filter(e => e.y < H + 40);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+
+      ctx.fillStyle = '#e0e0e0';
+      ctx.beginPath();
+      ctx.moveTo(player.x, player.y - 16);
+      ctx.lineTo(player.x - 14, player.y + 14);
+      ctx.lineTo(player.x + 14, player.y + 14);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#64b5f6';
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffd43b';
+      bullets.forEach(b => {
+        ctx.fillRect(b.x - b.w / 2, b.y, b.w, b.h);
+      });
+
+      enemies.forEach(e => {
+        ctx.fillStyle = e.color;
+        ctx.beginPath();
+        ctx.roundRect(e.x, e.y, e.w, e.h, 6);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(e.text, e.x + e.w / 2, e.y + e.h / 2);
+      });
+
+      particles.forEach(p => {
+        ctx.globalAlpha = p.life / 30;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+    }
+
+    function loop() {
+      if (!gameRunning) return;
+      update();
+      draw();
+      animFrame = requestAnimationFrame(loop);
+    }
+
+    function handleMove(x, y) {
+      const rect = canvas.getBoundingClientRect();
+      player.x = Math.max(16, Math.min(W - 16, x - rect.left));
+      player.y = Math.max(16, Math.min(H - 16, y - rect.top));
+    }
+
+    canvas.addEventListener('mousemove', e => handleMove(e.clientX, e.clientY));
+    canvas.addEventListener('touchmove', e => {
+      e.preventDefault();
+      handleMove(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: false });
+
+    function startGame() {
+      startOverlay.classList.add('hidden');
+      endOverlay.classList.add('hidden');
+      init();
+      loop();
+    }
+
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('restartBtn').addEventListener('click', startGame);
+  </script>
+</body>
+</html>

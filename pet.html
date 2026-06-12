@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>云养猫 🐱</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="page-body pet-body">
+  <header class="page-header">
+    <div class="page-title"><span class="page-title-icon">🐱</span>云养猫</div>
+    <a href="./" class="back-link">← 回首页</a>
+  </header>
+
+  <div class="pet-container">
+    <p class="pet-intro">我家的 <span class="pet-name">咪咪</span></p>
+
+    <div class="pet-stage">
+      <span class="pet-emoji" id="petEmoji">🐱</span>
+      <div class="pet-speech" id="petSpeech"></div>
+    </div>
+
+    <div class="pet-stats">
+      <div class="stat">
+        <span class="stat-label">心情</span>
+        <div class="stat-bar"><div class="stat-fill mood" id="moodBar" style="width:100%"></div></div>
+        <span class="stat-label" id="moodVal">100</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">饱腹</span>
+        <div class="stat-bar"><div class="stat-fill hunger" id="hungerBar" style="width:100%"></div></div>
+        <span class="stat-label" id="hungerVal">100</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">精力</span>
+        <div class="stat-bar"><div class="stat-fill energy" id="energyBar" style="width:100%"></div></div>
+        <span class="stat-label" id="energyVal">100</span>
+      </div>
+    </div>
+
+    <div class="pet-actions">
+      <button class="btn-pet" id="btnPet" onclick="doAction('pet')">🤚 摸摸</button>
+      <button class="btn-pet" id="btnFeed" onclick="doAction('feed')">🍖 喂饭</button>
+      <button class="btn-pet" id="btnPlay" onclick="doAction('play')">🧶 扔球</button>
+      <button class="btn-pet" id="btnSleep" onclick="doAction('sleep')">💤 睡觉</button>
+    </div>
+
+    <div class="pet-reset-area">
+      <p class="pet-hint">每次访问自动续状态</p>
+      <button onclick="resetPet()">重置</button>
+    </div>
+  </div>
+
+  <footer class="page-footer">made with ♥ by 董家才子</footer>
+
+  <script>
+    const STORAGE_KEY = 'pet_mimi';
+    const DECAY_INTERVAL = 3600000; // 1 hour = lose 5 points
+
+    const speeches = {
+      pet: ['喵~ 舒服', '呼噜噜~', '再摸摸嘛', '嘿嘿开心', '蹭蹭~'],
+      feed: ['好吃！', '嗝~', '还要还要', '鱼鱼！', '饱了饱了'],
+      play: ['接住了！', '喵喵冲！', '球球别跑', '累但快乐', '再来一次！'],
+      sleep: ['zzZ...', '困了...', '晚安喵', '呼...', '别吵...zzZ'],
+      hungry: ['饿了...', '想吃鱼', '肚子咕咕', '喂我嘛...'],
+      sad: ['不开心', '无聊...', '想你了', '陪我玩嘛', '哼！'],
+      tired: ['好困啊', '撑不住了', '要睡觉...', '眼睛睁不开'],
+      happy: ['今天真开心', '最爱主人了', '喵呜~', '想出去玩'],
+    };
+
+    let state = loadState();
+
+    function loadState() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const data = JSON.parse(saved);
+        const elapsed = Date.now() - data.lastVisit;
+        const decay = Math.floor(elapsed / DECAY_INTERVAL) * 5;
+        return {
+          mood: Math.max(0, data.mood - decay),
+          hunger: Math.max(0, data.hunger - decay),
+          energy: Math.min(100, data.energy + Math.floor(decay / 2)),
+          lastVisit: Date.now(),
+        };
+      }
+      return { mood: 100, hunger: 100, energy: 100, lastVisit: Date.now() };
+    }
+
+    function saveState() {
+      state.lastVisit = Date.now();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function updateUI() {
+      document.getElementById('moodBar').style.width = state.mood + '%';
+      document.getElementById('hungerBar').style.width = state.hunger + '%';
+      document.getElementById('energyBar').style.width = state.energy + '%';
+      document.getElementById('moodVal').textContent = state.mood;
+      document.getElementById('hungerVal').textContent = state.hunger;
+      document.getElementById('energyVal').textContent = state.energy;
+      updateExpression();
+    }
+
+    function updateExpression() {
+      const emoji = document.getElementById('petEmoji');
+      emoji.className = 'pet-emoji';
+      if (state.hunger < 20) {
+        emoji.textContent = '😿';
+        showSpeech('hungry');
+      } else if (state.mood < 20) {
+        emoji.textContent = '🙀';
+        showSpeech('sad');
+      } else if (state.energy < 20) {
+        emoji.textContent = '😪';
+        emoji.classList.add('sleepy');
+        showSpeech('tired');
+      } else if (state.mood > 80 && state.hunger > 60) {
+        emoji.textContent = '😸';
+      } else {
+        emoji.textContent = '🐱';
+      }
+    }
+
+    function showSpeech(category) {
+      const list = speeches[category];
+      const text = list[Math.floor(Math.random() * list.length)];
+      const el = document.getElementById('petSpeech');
+      el.textContent = text;
+      el.classList.add('show');
+      clearTimeout(el._timer);
+      el._timer = setTimeout(() => el.classList.remove('show'), 2500);
+    }
+
+    function animatePet(cls) {
+      const emoji = document.getElementById('petEmoji');
+      emoji.className = 'pet-emoji ' + cls;
+      setTimeout(() => updateExpression(), 1500);
+    }
+
+    function doAction(type) {
+      switch (type) {
+        case 'pet':
+          state.mood = Math.min(100, state.mood + 10);
+          state.energy = Math.max(0, state.energy - 3);
+          animatePet('happy');
+          break;
+        case 'feed':
+          state.hunger = Math.min(100, state.hunger + 20);
+          state.mood = Math.min(100, state.mood + 5);
+          animatePet('eating');
+          break;
+        case 'play':
+          state.mood = Math.min(100, state.mood + 15);
+          state.energy = Math.max(0, state.energy - 15);
+          state.hunger = Math.max(0, state.hunger - 10);
+          animatePet('happy');
+          break;
+        case 'sleep':
+          state.energy = Math.min(100, state.energy + 30);
+          state.mood = Math.min(100, state.mood + 5);
+          animatePet('sleepy');
+          break;
+      }
+      showSpeech(type);
+      saveState();
+      updateUI();
+    }
+
+    function resetPet() {
+      if (!confirm('确定要重置咪咪的状态吗？')) return;
+      localStorage.removeItem(STORAGE_KEY);
+      state = { mood: 100, hunger: 100, energy: 100, lastVisit: Date.now() };
+      updateUI();
+      showSpeech('happy');
+    }
+
+    // Auto-complain if neglected
+    setInterval(() => {
+      if (state.hunger < 30 && Math.random() < 0.3) showSpeech('hungry');
+      else if (state.mood < 30 && Math.random() < 0.3) showSpeech('sad');
+      else if (state.energy < 30 && Math.random() < 0.3) showSpeech('tired');
+      else if (state.mood > 80 && state.hunger > 60 && Math.random() < 0.15) showSpeech('happy');
+    }, 8000);
+
+    updateUI();
+  </script>
+</body>
+</html>

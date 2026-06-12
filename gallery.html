@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>表情包库 🖼</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="page-body gallery-body">
+  <header class="page-header">
+    <div class="page-title"><span class="page-title-icon">🖼</span>表情包小库 ✿</div>
+    <a href="./" class="back-link">← 回首页</a>
+  </header>
+
+  <div class="gallery-container">
+    <p class="gallery-intro">点击图片放大查看，喜欢就拿走~ 🐾</p>
+
+    <div class="gallery-grid" id="galleryGrid"></div>
+  </div>
+
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" id="lightboxClose">✕</button>
+    <div class="lightbox-content" id="lightboxContent"></div>
+  </div>
+
+  <footer class="page-footer">made with ♥ by 董家才子</footer>
+
+  <script>
+    const memes = [
+      { emoji: '🫠', label: '我裂开了' },
+      { emoji: '🥲', label: '笑着活下去' },
+      { emoji: '😵‍💫', label: '周一早上' },
+      { emoji: '🤡', label: '小丑竟是我' },
+      { emoji: '💀', label: '笑死' },
+      { emoji: '🫡', label: '收到老板' },
+      { emoji: '😤', label: '气鼓鼓' },
+      { emoji: '🥺', label: '求求了' },
+      { emoji: '🤯', label: '信息量太大' },
+      { emoji: '😴', label: '开会中' },
+      { emoji: '🤓', label: '让我看看' },
+      { emoji: '👻', label: '幽灵打工' },
+      { emoji: '🫣', label: '不敢看需求' },
+      { emoji: '🙃', label: '好的没问题' },
+      { emoji: '😮‍💨', label: '终于下班' },
+      { emoji: '🤑', label: '发工资了' },
+      { emoji: '🫥', label: '存在感为零' },
+      { emoji: '😈', label: '提了离职' },
+      { emoji: '🤝', label: '合作愉快' },
+      { emoji: '🫶', label: '比心' },
+      { emoji: '🥸', label: '假装在工作' },
+      { emoji: '🤖', label: '让AI来写' },
+      { emoji: '🪫', label: '电量不足' },
+      { emoji: '🐟', label: '摸鱼大师' },
+    ];
+
+    const grid = document.getElementById('galleryGrid');
+    memes.forEach((m, i) => {
+      const item = document.createElement('div');
+      item.className = 'gallery-item';
+      item.innerHTML = `
+        <div class="gallery-item-img">${m.emoji}</div>
+        <div class="gallery-item-label">${m.label}</div>
+      `;
+      item.addEventListener('click', () => openLightbox(m.emoji));
+      grid.appendChild(item);
+    });
+
+    const lightbox = document.getElementById('lightbox');
+    const lightboxContent = document.getElementById('lightboxContent');
+
+    function openLightbox(emoji) {
+      lightboxContent.textContent = emoji;
+      lightbox.classList.add('show');
+    }
+
+    document.getElementById('lightboxClose').addEventListener('click', () => {
+      lightbox.classList.remove('show');
+    });
+
+    lightbox.addEventListener('click', (e) => {
+      if (e.target === lightbox) lightbox.classList.remove('show');
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') lightbox.classList.remove('show');
+    });
+  </script>
+</body>
+</html>
